@@ -45,6 +45,22 @@ class Inning(models.Model):
     wickets = models.IntegerField(default=0)
     overs_completed = models.DecimalField(max_digits=4, decimal_places=1, default=0.0)
     is_completed = models.BooleanField(default=False)
+    @property
+    def calculated_total(self):
+        balls = self.ball_set.all()
+        return {
+            'runs': sum(ball.runs + ball.extras for ball in balls),
+            'wickets': sum(1 for ball in balls if ball.is_wicket),
+            'overs': f"{len(balls)//6}.{len(balls)%6}"
+        }
+
+    def save(self, *args, **kwargs):
+        # Auto-update totals when saving
+        totals = self.calculated_total
+        self.total_runs = totals['runs']
+        self.wickets = totals['wickets']
+        self.overs_completed = totals['overs']
+        super().save(*args, **kwargs)
 
 class Ball(models.Model):
     inning = models.ForeignKey(Inning, on_delete=models.CASCADE)
